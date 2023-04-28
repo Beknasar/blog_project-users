@@ -20,7 +20,7 @@ Bootstrap(app)
 
 
 # # CONNECT TO DB
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", 'sqlite:///blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -94,7 +94,7 @@ class BlogPost(db.Model):
     comments = relationship('Comment', back_populates='parent_post')
 
 
-db.create_all()
+# db.create_all()
 
 
 def admin_only(function):
