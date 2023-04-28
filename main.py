@@ -16,24 +16,42 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 app.app_context().push()
 ckeditor = CKEditor(app)
 Bootstrap(app)
+gravatar = Gravatar(app, size=100, rating='g', default='retro', force_default=False, force_lower=False, use_ssl=False, base_url=None)
 
 
-
-# # CONNECT TO DB
+# # CONNECT TO DB / CONFIGURING THE APP
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", 'sqlite:///blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
+# CONFIGURE FLASK LOG IN MANAGER
 login_manager = LoginManager()
 login_manager.init_app(app)
 
 
+# LOGIN MANAGER FUNCTION TO RETURN THE CURRENT ACTIVE USER OBJECT
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.query(User).get(user_id)
 
 
+# CREATING A NEW WRAPPER FUNCTION/ DECORATOR FOR ADMIN ONLY
+def admin_only(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        # If id is 1 then continue with the route function
+        if current_user.id == 1:
+            return function(*args, **kwargs)
+        else:
+            # Otherwise return abort with 403 error
+            return abort(403)
+    return decorated_function
+
+
+###################################################
+# #####CONFIGURE TABLES FOR DATABASE###### #
+###################################################
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -65,16 +83,6 @@ class Comment(db.Model):
     parent_post = relationship('BlogPost', back_populates='comments')
 
 
-gravatar = Gravatar(app,
-                    size=100,
-                    rating='g',
-                    default='retro',
-                    force_default=False,
-                    force_lower=False,
-                    use_ssl=False,
-                    base_url=None)
-
-
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
@@ -94,19 +102,7 @@ class BlogPost(db.Model):
     comments = relationship('Comment', back_populates='parent_post')
 
 
-# db.create_all()
-
-
-def admin_only(function):
-    @wraps(function)
-    def decorated_function(*args, **kwargs):
-        # If id is 1 then continue with the route function
-        if current_user.id == 1:
-            return function(*args, **kwargs)
-        else:
-            # Otherwise return abort with 403 error
-            return abort(403)
-    return decorated_function
+db.create_all()
 
 
 @app.route('/')
@@ -209,6 +205,7 @@ def contact():
     return render_template("contact.html")
 
 
+# ROUTE TO CREATE A NEW POST, REDIRECT TO HOMEPAGE
 @app.route("/new-post", methods=['GET', 'POST'])
 @admin_only
 def add_new_post():
@@ -228,6 +225,7 @@ def add_new_post():
     return render_template("make-post.html", form=form)
 
 
+# ROUTE TO EDIT POST AND RENDER UPDATED POST
 @app.route("/edit-post/<int:post_id>", methods=['GET', 'POST'])
 @admin_only
 def edit_post(post_id):
@@ -250,6 +248,7 @@ def edit_post(post_id):
     return render_template("make-post.html", form=edit_form)
 
 
+# ROUTE TO DELETE POSTS
 @app.route("/delete/<int:post_id>", methods=['GET', 'POST'])
 @admin_only
 def delete_post(post_id):
@@ -259,5 +258,8 @@ def delete_post(post_id):
     return redirect(url_for('get_all_posts'))
 
 
+###################################################
+# RUN SCRIPT
+###################################################
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
