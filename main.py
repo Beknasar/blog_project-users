@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from forms import CreatePostForm, RegisterForm, LoginForm, CommentForm
 from flask_gravatar import Gravatar
+from flask_wtf import csrf
 import os
 
 app = Flask(__name__)
@@ -116,6 +117,7 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         # Will use for login soon
+        csrf.generate_csrf()
         if User.query.filter_by(email=form.email.data).first():
             # User already exists
             flash("You've already signed up with that email, log in instead!")
@@ -148,6 +150,8 @@ def login():
     if form.validate_on_submit():
         email = form.email.data
         password = form.password.data
+
+        csrf.generate_csrf()
 
         # Find user by email entered.
         user = db.session.query(User).filter_by(email=email).first()
